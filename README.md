@@ -1,8 +1,8 @@
-# NRPE Plugin : check_inodes 
+# NRPE Plugin : check_tmpfs
 
 This simple Nagios NRPE plugin will check all tmpfs filesystems to check free space.
 
-It's based on the output from "df", parsed with awk to get the percentage of used inodes. 
+It's based on the output from "df", parsed with awk to get the percentage of usage. 
 
 It then echo the results as requested per NRPE.
 
