@@ -1,0 +1,95 @@
+#!/bin/bash
+#   This program is free software; you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published by
+#   the Free Software Foundation; either version 2 of the License, or
+#   (at your option) any later version.
+#
+#   This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#   GNU General Public License for more details.
+
+PROGNAME=`basename $0`
+VERSION="version 0.1"
+AUTHOR="by Sebastien BAUDRU seb@baudru.org"
+
+usage() {
+	echo ""
+        echo "$PROGNAME check each tmpfs filesystem looking"
+        echo "for usage. It's based on the 'df' command and should run on any"
+        echo "system having it."
+        echo "$PROGNAME [-w warningThreshold] [-c criticalThreshold]"
+        echo " "
+        echo "Options:"
+        echo "  -w"
+	echo "    set the warning threshold. E.g. : 80-90 to match usage between 80% and 90% (INCLUDED)"
+	echo "    default : 80-90"
+        echo "  -c RANGE"
+	echo "    set the critical threshold. E.g. : 90-100 to match usage between 90% and 100% (INCLUDED)"
+	echo "    default : 90-100"
+        echo "  -h"
+	echo "    print this help message"
+        echo " "
+}
+
+warnLow=80
+warnHigh=90
+critLow=91
+critHigh=100
+
+while test -n "$1"; do
+    case "$1" in
+        -w)
+		warnLow=$(echo $2 | awk -F'-' '{print $1}')
+		warnHigh=$(echo $2 | awk -F'-' '{print $2}')
+		shift
+    		;;
+        -c)
+		critLow=$(echo $2 | awk -F'-' '{print $1}')
+		critHigh=$(echo $2 | awk -F'-' '{print $2}')
+		shift
+    		;;
+	-h)
+		usage
+		exit 0
+		;;
+        *)
+        	echo "Unknown argument: $1"
+	        usage
+        	exit 1
+	        ;;
+    esac
+    shift
+done
+
+df | grep tmpfs | awk -v warnLow=$warnLow -v warnHigh=$warnHigh -v critLow=$critLow -v critHigh=$critHigh ' 
+    BEGIN {
+      warn=0
+      err=0
+    }
+    FNR>1 { 
+
+      gsub("%","")
+      if ($5>=warnLow && $5<=warnHigh) {
+	      warnings[$1]=$5
+	      warn++
+      } else if ($5>=critLow && $5<=critHigh) {
+	      errors[$1]=$5
+	      err++
+      }  	
+    }
+    END { 
+    	if (err) {
+    		printf "CRITICAL; "
+		for (part in errors) { printf part" "errors[part]"% " }
+	}
+    	if (warn) {
+    		printf "WARNING; "
+		for (part in warnings) { printf part" "warnings[part]"% " }
+	}
+	if (!err && !warn) {
+		printf "OK; All tmpfs less than %s%% full", warnLow
+	}
+    }
+    '
+echo
